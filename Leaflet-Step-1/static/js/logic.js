@@ -2,27 +2,30 @@
 let link = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson';
 
 // perform a GET request to the query URL
-d3.json(link).then((data) => {
+d3.json(link).then((eqdata) => {
     // Once we get a response, send the data.features object to the createFeatures function
-    createFeatures(data.features);
-    console.log(data.features);
+    createFeatures(eqdata.features);
+    console.log(eqdata.features);
 });
+
+var earthquakes = L.layerGroup();
+
 
 function createMap(earthquakes) {
     // assign the different mapbox styles
-    let satellite = L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
+    let satellite = L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{z}/{x}/{y}?access_token={accessToken}', {
         maxZoom: 20,
         id: 'mapbox.satellite',
         accessToken: API_KEY
     });
 
-    let grayscale = L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
+    let grayscale = L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/light-v10/tiles/{z}/{x}/{y}?access_token={accessToken}', {
         maxZoom: 20,
         id: 'mapbox.light',
         accessToken: API_KEY
     });
 
-    let outdoors = L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
+    let outdoors = L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token={accessToken}', {
         maxZoom: 20,
         id: 'mapbox.outdoors',
         accessToken: API_KEY
@@ -35,13 +38,14 @@ function createMap(earthquakes) {
     };
 
     let overlayMap = {
-        Earthquakes: earthquakes
+        Earthquakes: earthquakes,
+        tectonicPlates: tectonicplates
     };
 
     let myMap = L.map('map', {
         center: [36.7126875, -120.476189],
         zoom: 4,
-        layers: [outdoors, earthquakes]
+        layers: [outdoors, earthquakes,tectonicplates]
     });
 
     L.control.layers(baseMap, overlayMap, {
@@ -73,7 +77,26 @@ function createMap(earthquakes) {
     };
     legend.addTo(myMap);
 
+    let tectonicLink = 'https://raw.githubusercontent.com/fraxen/tectonicplates/master/GeoJSON/PB2002_boundaries.json'
+    var tectonicplates = L.layerGroup();
+    // Create the faultlines and add them to the faultline layer
+    d3.json(tectonicLink).then((data) =>{
+        L.geoJSON(data,{
+            style: {
+                    opacity: 1,
+                    color: "#e85151",  
+                    weight: 2.7
+            },
+            // a popup info for each tactonic boundary
+            onEachFeature: function (feature, layer) {
+                layer.bindPopup("<h3> Tectonic Plate Boundary: " +feature.properties.Name+
+                                    "</h3><hr><h4> PlateA: "+ feature.properties.PlateA +
+                                    " &#124; PlateB: " +feature.properties.PlateB +"</h4>")
+            }
+        }).addTo(tectonicplates);  
+    });
 }
+
 
 function createFeatures(eqdata) {
     function onEachFeature(feature, layer) {
